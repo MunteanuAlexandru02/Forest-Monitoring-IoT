@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flask Server</title>
+    <style>
+        .warning {
+            color: red;
+            font-weight: bold;
+        }
+        table {
+            width: 50%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 10px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1 class="warning">Warning: Fire Detected!</h1>
+    <p>Please be cautious and take necessary precautions.</p>
+
+    <!-- Image Placeholder -->
+    <div class="image-container">
+        <img src="fire.jpg" alt="Fire Warning" style="width: 80%; max-width: 600px;">
+    </div>
+
+
+    <table>
+        <thead>
+            <tr>
+                <th>Parameter</th>
+                <th>Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Luminosity</td>
+                <td>{{ data.luminosity }}</td>
+            </tr>
+            <tr>
+                <td>CO2</td>
+                <td>{{ data.CO2 }}</td>
+            </tr>
+            <tr>
+                <td>X Axis</td>
+                <td>{{ data.X_axis }}</td>
+            </tr>
+            <tr>
+                <td>Y Axis</td>
+                <td>{{ data.Y_axis }}</td>
+            </tr>
+            <tr>
+                <td>Z Axis</td>
+                <td>{{ data.Z_axis }}</td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>
