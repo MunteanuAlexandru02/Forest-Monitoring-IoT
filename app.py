@@ -45,4 +45,4 @@ def refresh_info():
     return jsonify({"status": "success"}), 200
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, ssl_context=('cert/cert.pem', 'cert/key.pem'), debug=True)
+    app.run(host='0.0.0.0', port=5000, ssl_context=('cert/CA/forestiot.local.crt', 'cert/CA/forestiot.local.key'), debug=True)

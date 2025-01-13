@@ -47,19 +47,26 @@ mpu6500 = MPU6500(i2c)
 photoresistor = ADC(Pin(28))
 co2_sensor = ADC(Pin(26))
 
+last_telegram_message = 0 # time in order to not spam with messages
+
 bot_token = '8027770112:AAGo-2bpr0wFVhvoKbltoik0f2dErMg-VZo'
 chat_id = '7864297252'
 
 def send_telegram_message(message):
+    global last_telegram_message
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     payload = {"chat_id": chat_id, "text": message}
 
-    try:
-        response = urequests.post(url, json=payload)
-        response.close()
-        print("Message sent successfully!")
-    except Exception as e:
-        print(f"Error sending message: {e}")
+
+    if time.time() - last_telegram_message > 60:
+        last_telegram_message = int(time.time())
+        try:
+            response = urequests.post(url, json=payload)
+            response.close()
+            print("Message sent successfully!")
+        except Exception as e:
+            print(f"Error sending message: {e}")
+        
 
 # Initialize previous values for smoothing
 prev_accel_x, prev_accel_y, prev_accel_z, prev_luminosity = 0, 0, 0, 0

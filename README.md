@@ -1,6 +1,14 @@
 # <ins>IoT System for Forest Monitoring</ins>
 
 ### <ins>Introducere:</ins>
+
+Schimbarile climatice si activitatile umane au contribuit semnificativ
+la cresterea frecventei si intensitatii incendiilor de vegetatie si
+alunecarilor de teren, fenomene care pun in pericol vieti omenesti,
+ecosisteme si infrasctructuri critice. Necesitatea unui sistem
+eficient de monitorizare si avertizare timpurie devine tot mai
+importanta pentru prevenirea dezastrelor naturale si pentru minimizarea
+impactului lor socio-economic.
  
 Proiectul isi propune sa creeze un sistem IoT capabil sa detecteze
 incediile forestiere prin intermediul unor senzori de lumina si CO2. 
@@ -98,7 +106,15 @@ pentru pentru CO2. Datele nu sunt stocate, datele din grafice
 aparand doar de la pornirea placutei si odata cu transmiterea
 primului mesaj catre MQTT Broker.
 
-#### <ins>Conctarea la internet:</ins>
+Pe placa, vor fi încărcate următoarele fișiere:
+
+    - simple.py : contine codul care realizeaza conectarea la internet
+
+    - constants.py : contine diferite constante utilizate in fisierul main.py
+
+    - mpu6500.py : biblioteca folosita pentru preluarea datelor de la modulul cu accelerometru si giroscop.
+
+#### <ins>Conectarea la internet:</ins>
 
 Pentru a ma conecta la internet am folosit codul din fisierul:
 simple.py, folosit si in cadrul laboratoarelor, conectandu-ma
@@ -129,7 +145,21 @@ Endpoint-ul "/info", va trata request-ul primit de la placuta.
 
 Serverul va folosi o conexiune https, creata cu ajutorul 
 unui certificat dummy, self-signed, creat de scriptul din 
-folderul proiectului. 
+folderul proiectului.
+
+openssl genrsa -out ./cert/CA/rootCA.key 4096
+
+openssl req -new -x509 -days 365 -key ./cert/CA/rootCA.key -subj="/C=RO/ST=Bucharest/O=Poli/CN=Poli CA" -out ./cert/CA/rootCA.crt 
+
+openssl req -newkey rsa:2048 -nodes -keyout ./cert/CA/forestiot.local.key -subj="/C=RO/ST=Bucharest/O=Poli/CN=*.forestiot.local" -out ./cert/CA/forestiot.local.csr
+
+openssl x509 -req -extfile <(printf "subjectAltName=DNS:forestiot.local,DNS:*.forestiot.local") -days 365 -in ./cert/CA/forestiot.local.csr -CA ./cert/CA/rootCA.crt -CAkey ./cert/CA/rootCA.key -CAcreateserial -out ./cert/CA/forestiot.local.crt
+
+Pentru a simplifica accesul catre homepage-ul 
+proiectului, am configurat nginx pentru a face 
+continutul afisat de catre serverul Flask accesibil
+prin forestiot.local, la fel, am facut si pentru a
+face grafana accesibil prin: forestiot.local:3000/.
 
 #### <ins> Sistemul de alertare si notificare: </ins>
 
@@ -145,17 +175,26 @@ si o pagina HTML doar cu mesajul mentionat anterior; "Fire", va
 fi afisata pagina aferenta unui incendiu si "Landslide", va fi
 afisata pagina aferenta unei alunecari de teren.
 
+Pe langa un mesaj de avertizare, o pagina care anunța un hazard
+va contine si un tabel în care se vor afla cele mai importante informații
+captate de senzori la momentul producerii hazardului. La început, acest
+tabel va avea valori dummy, care vor fi înlocuit ulterior cu cele reale,
+luate de la senzori.
+
 Paginile HTML aferente campului Warning vor fi:
 
 ![](images/FireWarning.png)
 ![](images/LandslideWarning.png)
+![](images/NoWarnings.png)
 
 Pentru a nu verifica mereu site-ul pentru detectarea unor 
 hazarduri, voi folosi BOT-ul de Telegram pentru a trimite
 un mesaj utilizatorului de fiecare data cand se 
 produce un hazard. Mesajele sunt trimise automat, de fiecare 
 data cand sunt depasite threshold-urile setate pentru fiecare 
-senzor. 
+senzor.
+
+![](images/TelegramWarning.png)
 
 ### <ins>Vizualizarea si Procesarea de Date:</ins>
 
@@ -193,8 +232,8 @@ incendiu.
 
 ### <ins>Securitate:</ins>
 
-Am folosit un certificat self-signed, iar pentru crearea
-acestuia m-am folosit de biblioteca: "cryptography",
+Initial, am folosit un certificat self-signed, iar 
+pentru crearea acestuia m-am folosit de biblioteca: "cryptography",
 mai exact de modulul x509, care este folosit pentru
 crearea si utilizarea certificatelor X.509. Am creat o
 cheie privata folosind functia "generate_private_key" din
@@ -204,6 +243,10 @@ Dupa creare, am salvat cheia in fisierul "key.pem",
 necriptata. Urmatorul pas a fost crearea unui subiect si
 a unui issuer. Certificatul a fost facut cu ajutorul clasei
 CertificateBuilder din biblioteca x509.
+
+Nu am reusit sa fac ca acest certificat sa fie recunoscut de
+browser, de aceea am construit unul nou folosind comenzile
+de openssl date mai sus.
 
 Asigurata de comunicarea HTTPS a serverului. Placuta
 trimite POST request-ul prin intermediul metodei post din 
@@ -249,8 +292,10 @@ over HTTPS" .
 
     Prima data am incercat sa folosesc OpenSSL care 
     presupunea instalarea diferitelor tool-uri pe 
-    Windows, la final am ales sa merg pe 
-    implementarea folosind un server Flask cu HTTPS.
+    Windows, dupa aceea am ales sa merg pe 
+    implementarea serverului Flask care primeste anumite
+    certificate ca argument, acestea fiind create cu ajutorul
+    openssl, dar pe Linux, nu pe Windows :).
 
 5. Valorile neconstate date de senzori:
 
@@ -277,4 +322,67 @@ over HTTPS" .
     fost formatul mesajului catre MQTT Broker astfel incat
     acesta sa fie interpretat automat de Grafana. La final,
     am ales sa merg pe JSON, fiind parsat automat.
-    
+
+8. Afisarea paginii HTML:
+
+    După trimiterea unor mesaje și afișarea paginii de eroare,
+    aceasta se schimba după fiecare mesaj trimis, fiind destul
+    de greu de reperat un mesaj de avertizare. De aceea, am
+    decis să pagina de avertizare cu una care afișează
+    “No Hazards” doar după un număr fix de mesaje care anunța
+    ca totul este în regula.
+
+9. Crearea unui certificat self-signed:
+
+    Prima data am reusit sa creez un certificat self-signed
+    folosind un script. Acest certificat nu era insa
+    recunoscut de catre browser, chiar daca era adaugat
+    in lista de certificate ale browser-ului respectiv.
+    De aceea am decis sa revin iar la optiunea folosirii
+    openssl, dar, pentru a evita mai multe probleme,
+    am decis sa imi construiesc si o domeniu local, folosind
+    nginx (lucru care a dus si la aparitia mai multor erori).
+    Dupa crearea domeniului local, am intampinat mai multe
+    erori, tot din cauza ca certificatul nu era recunoscut
+    de catre browser, lucru care a dus la crearea unui
+    rootCA cu ajutorul comenzilor de SSL. Dupa adaugarea
+    certificatului in lista de certificate recunoscute
+    de catre browser, lucrurile par sa mearga in momentul
+    de fata.
+
+![](images/BrowserCert.png)
+
+10. Configurarea Grafana cu HTTPS:
+
+    Din cauza domeniului configurat anterior, s-au produs
+    anumite erori la configurarea HTTPS pentru Grafana,
+    incercand diferite metode de a putea ajunge la dashboard
+    folosind domeniul. Am incercat sa creez un nou subdirector
+    in domeniu forestiot.local/grafana, lucru care nu a mers.
+    Am decis la final sa ma folosesc de nginx pentru a face
+    grafana accesibil folosind: forestiot.local:3000.
+
+
+### Resurse:
+
+https://ocw.cs.pub.ro/courses/priot/laboratoare/04
+https://ocw.cs.pub.ro/courses/priot/laboratoare/05
+https://ocw.cs.pub.ro/courses/priot/laboratoare/06
+https://ocw.cs.pub.ro/courses/priot/laboratoare/08
+https://mosquitto.org/
+https://medium.com/gravio-edge-iot-platform/how-to-set-up-a-mosquitto-mqtt-broker-securely-using-client-certificates-82b2aaaef9c8
+https://invensense.tdk.com/download-pdf/mpu-6500-datasheet/
+https://www.instructables.com/Accelerometer-Gyro-Tutorial/
+https://lastminuteengineers.com/mq2-gas-senser-arduino-tutorial/
+https://www.pololu.com/file/0j309/mq2.pdf
+https://www.youtube.com/watch?v=g-NvPPEj3oQ
+https://www.youtube.com/watch?v=7VW_XVbtu9k&t
+https://www.youtube.com/watch?v=5HuN9iL-zxU&t
+https://www.educba.com/flask-https/
+https://blog.miguelgrinberg.com/post/running-your-flask-application-over-https
+https://core.telegram.org/bots/features
+https://makeblock-micropython-api.readthedocs.io/en/latest/public_library/Third-party-libraries/urequests.html
+https://grafana.com/docs/grafana/latest/setup-grafana/configure-grafana/
+https://grafana.com/docs/grafana/latest/setup-grafana/
+https://medium.com/activewizards-machine-learning-company/intro-to-grafana-installation-configuration-and-building-the-first-dashboard-bf408747e6a8
+https://grafana.com/docs/grafana/latest/setup-grafana/set-up-https/https://grafana.com/docs/grafana/latest/setup-grafana/set-up-https/
