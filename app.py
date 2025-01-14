@@ -7,15 +7,17 @@ data = { "Warning": None, "luminosity": 123.45, "CO2": 678.90,
 
 message_received = 0
 last_hazard = None
+init = True
 
 @app.route('/')
 def home():
-    global last_hazard, message_received
+    global last_hazard, message_received, init
 
     message_received += 1
 
     if data['Warning'] is None:
-        if last_hazard is not None and message_received > 5:
+        if init is True or last_hazard is not None and message_received > 5:
+            init = False
             last_hazard = None
             return render_template('allgood.html')
     elif data['Warning'] == 'Landslide':
